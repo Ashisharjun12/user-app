@@ -1,24 +1,35 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'expo-router';
+import useAuthStore from '../store/authStore';
+import useCartStore from '../store/cartStore';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+export default function Layout() {
+  const { isAuthenticated, checkAuth, user } = useAuthStore();
+  const { fetchCart, clearCart } = useCartStore();
+  const router = useRouter();
+  const didRedirect = useRef(false);
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    if (isAuthenticated && user && !didRedirect.current) {
+      didRedirect.current = true;
+      if (!user.isProfileComplete) {
+        router.replace('/setup-profile');
+      }
+    }
+  }, [isAuthenticated, user]);
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCart();
+    } else {
+      clearCart(true); // Clear local cart only on logout/init
+    }
+  }, [isAuthenticated]);
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
